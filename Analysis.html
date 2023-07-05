@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Analysis of NYC Taxi Trips 2009-2012</title>
+  <meta name="author" content="Rodrigo Daguano">
+  <meta name="description" content="Analysis of NYC Taxi Trips 2009-2012">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: white;
+    }
+
+    table, th, td {
+    border: 1px solid black;
+    padding: 7px;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+
+
+    h1, figure, table {text-align: center;}
+    h1 {color: rgb(70, 70, 70)}
+    h2 {color: rgb(128, 128, 128);}
+    code {
+      font-family: Consolas,"courier new";
+      background-color: #f1f1f1;
+      padding: 2px;
+      font-size: 105%;
+    }
+  </style>
+</head>
+
+<body>
+<h1>Data Engineering Demo</h1>
+<div style="text-align: center;">by Rodrigo Daguano</div>
+<h1>The Scenario</h1>
+<div>
+  <figure>
+    <img src="img/nyc-street.jpg" alt="New York City" width="800">
+  </figure>
+  <div>
+    <p>
+      New York City is one of the world's most populous megacities with almost 20 million people in its metropolitan
+      statistical area and approximately 23 million in its combined statistical area.
+      The city has been described as the cultural, financial, and media capital of the world, significantly influencing
+      commerce, entertainment, research, technology, education, politics, tourism, art, fashion, and sports, and is the
+      most photographed city in the world. Home to the headquarters of the United Nations, New York is an important
+      center for international diplomacy,and has sometimes been called the capital of the world.
+    </p>
+
+    <p>
+      Providing continuous 24/7 service and contributing to the nickname The City That Never Sleeps, the New York City
+      Subway is the largest single-operator rapid transit system worldwide, with 472 rail stations. Other features of the
+      city's transportation infrastructure encompass 13,587 yellow taxicabs, other vehicle for hire companies,
+      and the Roosevelt Island Tramway, an aerial tramway that transports commuters between Roosevelt Island and
+      Manhattan Island.
+    </p>
+  </div>
+
+</div>
+
+<h1>The Data</h1>
+<p>
+  The yellow taxicab is an iconic vehicle related to the city of New York. The <b>NYC Taxi Trips</b> database provides
+  4 million rows* of data between the years of 2009 and 2012 in this city alone, which accounts for over 1.6GB of
+  data for processing and analysis!
+</p>
+
+<p>
+  The following questions were proposed to guide this data analysis exercise. For instructions on how the
+  processing of data was conducted and what tools were used, see the <b>README.md</b> file.
+</p>
+
+<p class="remark">
+  *The number is a quick result from the query <code>select count(*) from trips;</code>
+</p>
+
+<h1>Questions</h1>
+For all the queries, the database is loaded with data from the years 2009-2012
+
+<h2>1. What is the average distance traveled by trips with a maximum of 2 passengers?</h2>
+<p>
+  The query below results in an average distance of 2.66 miles.
+</p>
+<pre>
+<code>
+  select avg(trip_distance) from trips
+  where passenger_count <= 2;
+</code>
+</pre>
+
+
+<h2>2. Which are the 3 biggest vendors based on the total amount of money raised?</h2>
+<div>
+  <div>
+    <p>
+      The next table is the direct result of the query below. As calculated, Creative Mobile Technologies, LLC is the
+      largest vendor, with a total revenue of over $19.5 million in the 4-year period; followed closely by Verifone
+      Inc, also above $19 million. The third largest vendor is Dependable Driver Service, Inc, with a revenue
+      of just over $2.7 million, more than 6 times smaller than the second place.
+    </p>
+<pre>
+<code>
+  select vendors.name as Vendor, sum(total_amount) as Total from trips
+  join vendors on trips.vendor_id=vendors.vendor_id
+  group by Vendor
+  order by total desc
+  limit 3;
+</code>
+</pre>
+  </div>
+  <div class="table-box">
+    <table>
+      <caption>Largest taxi vendors by revenue (2009-2012)</caption>
+      <tbody>
+      <tr>
+        <td><b>Position</b></td>
+        <td><b>Vendor</b></td>
+        <td><b>Total Revenue</b></td>
+      </tr>
+      <tr>
+        <td>1.</td>
+        <td>Creative Mobile Technologies, LLC</td>
+        <td>$19,549,084.27</td>
+      </tr>
+      <tr>
+        <td>2.</td>
+        <td>VeriFone Inc</td>
+        <td>$19,043,434.00</td>
+      </tr>
+      <tr>
+        <td>3.</td>
+        <td>Dependable Driver Service, Inc</td>
+        <td>$2,714,901.72</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2>3. Make a histogram of the monthly distribution over 4 years of rides paid with cash</h2>
+<p>
+  The two queries below are combined in histogram between rides paid with cash and rides paid by other methods. Note
+  that there is data missing for some months, namely November 2011, November 2012 and December 2012.
+</p>
+<p>
+  Visual inspection shows that the ratio between cash/not cash rides is steady along the whole period, and that there
+  are drops in the overall number of rides around the end of the year, with the minimums recorded in December 2009
+  and December 2010.
+</p>
+<pre>
+<code>
+  select count(*) as Cash_Only, Datepart(Month,pickup_datetime) as Month, Datepart(Year, pickup_datetime) as Year from trips
+  join payment on payment.payment_type=trips.payment_type
+  where payment_lookup = 'Cash'
+  group by Month, Year
+  order by Year, Month;
+
+  select count(*) as Not_Cash, Datepart(Month,pickup_datetime) as Month, Datepart(Year, pickup_datetime) as Year from trips
+  join payment on payment.payment_type=trips.payment_type
+  where payment_lookup != 'Cash'
+  group by Month, Year
+  order by Year, Month;
+</code>
+</pre>
+<figure>
+  <img src="Results/question3.png" width="600">
+  <figcaption>Fig.1 - Distribution of rides paid with cash and with other methods</figcaption>
+</figure>
+<h2>4. Make a time series chart computing the number of tips each day for the last 3 months of 2012</h2>
+<p>
+  Two queries are presented to get the time series from the database, the difference being that the first uses the
+  day of the year as an integer index for the data, while the second query results in a multi-level index of the pair
+  (Day, Month). The indexing style of the first query is used for the image below.
+</p>
+
+<pre>
+<code>
+  select count(*) as Tips, Datepart(dayofyear, pickup_datetime) as Date from trips
+  where tip_amount > 0
+  and Datepart(Year,pickup_datetime) = 2012 and Datepart(Month,pickup_datetime) between 10 and 12
+  group by Date
+  order by Date;
+
+  select count(*) as Tips, Datepart(Day,pickup_datetime) as Day, Datepart(Month, pickup_datetime) as Month from trips
+  where tip_amount > 0
+  and Datepart(Year,pickup_datetime) = 2012 and Datepart(Month,pickup_datetime) between 10 and 12
+  group by Day, Month
+  order by Month, Day;
+</code>
+</pre>
+
+<figure>
+  <img src="Results/question4a_line.png" width="600">
+  <figcaption>Fig.2 - Time series of number of tips</figcaption>
+</figure>
+
+<h2>5. What is the average trip time on Saturdays and Sundays?</h2>
+
+<p>
+  The next query results in the average duration of 524 seconds (or 8 minutes and 44 seconds) for the trips in the
+  weekends of the whole period. For the calculation it was assumed that the valid trips started between 00:00:00 on the
+  Saturday and 23:59:59 on the Sunday.
+</p>
+<pre>
+<code>
+  select avg(datediff(seconds, pickup_datetime, dropoff_datetime)) as Average_sec from trips
+  where date_part(weekday, pickup_datetime) in (6, 0);
+</code>
+</pre>
+
+</body>
+
+</html>
